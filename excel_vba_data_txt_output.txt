@@ -1,0 +1,51 @@
+Const COL_FILE As Integer = 3 'C列
+Const COL_PATH As Integer = 4 'D列
+Const COL_HEAD As Integer = 5 'E列
+Const ROW_START As Integer = 2 '2行目
+Public Sub output()
+ Dim myWS As Worksheet
+ Dim lastRow As Integer
+ lastRow = getLastRow()
+    
+    
+    For i = ROW_START To getLastRow
+    
+        Dim fileNm As String
+        fileNm = Cells(i, COL_FILE).Value
+        
+        
+        Dim filePath As String
+        filePath = ThisWorkbook.Path + "\" + fileNm + ".txt"
+        
+        ' エラーの場合
+        On Error GoTo WriteError
+          
+          
+          'ファイルを追記モードで開く
+        Open filePath For Output As #1
+        
+            Print #1, Cells(i, COL_PATH).Value
+            Print #1, ""
+            Print #1, Cells(i, COL_HEAD).Value
+
+        '開いたファイルを閉じる
+        Close #1
+    
+    Next
+
+    '終わったのが分かるようにメッセージを出す
+    MsgBox "完了！"
+    
+    Exit Sub
+
+'書き込み失敗
+WriteError:
+    Close #1
+    MsgBox "書込みに失敗しました。"
+    
+End Sub
+
+' COL_INDEXの最終行位置を取得
+Function getLastRow()
+    getLastRow = Cells(Rows.Count, COL_HEAD).End(xlUp).Row
+End Function
