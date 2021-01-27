@@ -1,0 +1,145 @@
+Const COL_INDEX As Integer = 2 'B列
+Const ROW_START As Integer = 2 '2行目
+Public Sub insertSqlOutput()
+
+Dim myWS As Worksheet
+For Each myWS In Worksheets
+    If myWS.Name Like "@*" Then
+        
+        Dim wsName As String
+        wsName = Mid(myWS.Name, 2, Len(myWS.Name) - 1)
+        
+        Dim filePath As String
+        filePath = ThisWorkbook.Path + "\" + wsName + ".txt"
+        
+        ' エラーの場合
+        On Error GoTo WriteError
+        
+        'ファイルを追記モードで開く
+        Open filePath For Output As #1
+         
+        'myWS.Select
+        myWS.Activate
+        
+        '入力最終行取得
+        Dim lastRow As Integer
+        lastRow = getLastRow
+       
+        
+        '開いたファイルに書き込む
+        Dim tableNm As String
+        Dim colNmLine As String
+        For i = ROW_START To getLastRow
+            
+            ' 空白なら次へ
+            If Cells(i, COL_INDEX).Value = "" Then
+                GoTo skip
+            End If
+            
+            ' テーブル名取得
+            If Cells(i, COL_INDEX + 1).Value = "" Then
+                'COL_INDEXの次の列が空白ならテーブル名と判定
+                
+                Dim targetNm As String
+                targetNm = Cells(i, COL_INDEX).Value
+                
+                If tableNm <> "" Then
+                    Print #1, ""
+                End If
+                
+                tableNm = targetNm
+                
+                'コメント出力
+                Print #1, "/*"
+                Print #1, " Insert " & tableNm
+                Print #1, "*/"
+                
+                
+                GoTo skip
+            End If
+            
+            Dim lastCol As Integer
+            lastCol = getLastCol(i)
+            
+            'カラム名生成
+            If Cells(i - 1, COL_INDEX + 1).Value = "" Then
+                '前の行のCOL_INDEXの次の列が空白ならカラム名の行と判定
+                colNmLine = createColNmLine(i, lastCol)
+                GoTo skip
+            End If
+            
+            
+            '上記以外はデータ行
+            Dim dataLine As String
+            dataLine = createDataLine(i, lastCol)
+            
+            'INSERT文生成
+            Dim sql As String
+            sql = createInsertSql(tableNm, colNmLine, dataLine)
+            Print #1, sql
+            
+skip:
+
+        Next
+         
+        '開いたファイルを閉じる
+        Close #1
+        
+    End If
+Next
+
+    Sheets(1).Select
+    Cells(1, 1).Select
+     
+    '終わったのが分かるようにメッセージを出す
+    MsgBox "完了！"
+    
+    Exit Sub
+
+'書き込み失敗
+WriteError:
+    Close #1
+    MsgBox "書込みに失敗しました。"
+ 
+End Sub
+' COL_INDEXの最終行位置を取得
+Function getLastRow()
+    getLastRow = Cells(Rows.Count, COL_INDEX).End(xlUp).row
+End Function
+' rowの最終列位置を取得
+Function getLastCol(ByVal row As Integer)
+    getLastCol = Cells(row, Columns.Count).End(xlToLeft).Column
+End Function
+'カラム名行を生成
+Function createColNmLine(ByVal row As Integer, ByVal lastCol As Integer)
+
+    Dim sql As String
+    
+    For i = 0 To lastCol - COL_INDEX
+        If i > 0 Then
+            sql = sql & ", "
+        End If
+        sql = sql & Cells(row, COL_INDEX + i).Value
+    Next
+createColNmLine = sql
+End Function
+'データ行を生成
+Function createDataLine(ByVal row As Integer, ByVal lastCol As Integer)
+
+    Dim sql As String
+    
+    For i = 0 To lastCol - COL_INDEX
+        If i > 0 Then
+            sql = sql & ", "
+        End If
+        sql = sql & "'" & Cells(row, COL_INDEX + i).Value & "'"
+    Next
+createDataLine = sql
+End Function
+'引数からINSERT文生成
+Function createInsertSql(ByVal tableNm As String, ByVal colNmLine As String, ByVal dataLine As String)
+    Dim sql As String
+    
+    sql = "INSERT INTO " & tableNm & " (" & colNmLine & ") VALUES (" & dataLine & ");"
+    createInsertSql = sql
+End Function
